@@ -1,0 +1,16 @@
+{
+  "name": "西宮らーめん帖",
+  "short_name": "らーめん帖",
+  "description": "西宮市のラーメン店マップ。行った店・食べたメニュー・評価を記録できます。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f8",
+  "theme_color": "#1f2433",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
