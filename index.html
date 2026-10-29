@@ -79,7 +79,9 @@ button { cursor: pointer; }
 .icon-btn svg { width: 18px; height: 18px; }
 
 /* ---------- map ---------- */
-#map { position: fixed; inset: 0; z-index: 1; background: var(--paper); }
+/* Google マップは地図要素に position: relative を付けるので、固定配置は外側の枠で行う */
+.map-frame { position: fixed; inset: 0; z-index: 1; }
+#map { width: 100%; height: 100%; background: var(--paper); }
 .leaflet-container { font-family: var(--font-body); background: var(--paper); }
 .leaflet-control-attribution { font-size: 10px; }
 .leaflet-bottom { bottom: env(safe-area-inset-bottom, 0px); }
@@ -261,7 +263,7 @@ dialog::backdrop { background: rgba(10, 12, 18, .45); }
   </button>
 </header>
 
-<div id="map" role="application" aria-label="西宮市のラーメン店地図"></div>
+<div class="map-frame"><div id="map" role="application" aria-label="西宮市のラーメン店地図"></div></div>
 
 <div class="legend" aria-hidden="true"><span><i></i>まだ</span><span><i class="v"></i>行った</span></div>
 
@@ -488,7 +490,8 @@ function pinEl(shop, selected) {
 
 /* ===== 地図（Google マップ / 国土地理院 の切り替え） ===== */
 // 市外を薄く覆うマスク。外枠と市境界は回転方向を逆にして「穴」にする。
-const WORLD = [[85, -179.9], [85, 179.9], [-85, 179.9], [-85, -179.9]];
+// 外枠は日付変更線をまたがない範囲にする（Google マップは辺を短い向きに引くため）
+const WORLD = [[44, 125], [44, 146], [24, 146], [24, 125]];
 function ringArea(r) { let a = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; a += p[1] * q[0] - q[1] * p[0]; } return a; }
 const HOLE = (Math.sign(ringArea(WORLD)) === Math.sign(ringArea(CITY))) ? CITY.slice().reverse() : CITY;
 
@@ -567,7 +570,7 @@ function googleAdapter(key) {
       content.style.transform = "translateY(-4px)";
       if (markers[shop.id]) { markers[shop.id].content = content; markers[shop.id].zIndex = selected ? 1000 : 0; return; }
       const m = new AdvancedMarker({ map, position: { lat: shop.lat, lng: shop.lng }, content, title: shop.name, gmpClickable: true });
-      m.addListener("click", () => onTap(shop.id));
+      m.addEventListener("gmp-click", () => onTap(shop.id));
       markers[shop.id] = m;
     },
     remove(id) { if (markers[id]) { markers[id].map = null; delete markers[id]; } },
