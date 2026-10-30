@@ -7,7 +7,8 @@
 <meta name="theme-color" content="#1f2433">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- default：画面をステータスバーの下に潜らせない（iOS 26 はステータスバー付近の内容をぼかすため） -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="らーめん帖">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -67,7 +68,7 @@ button { cursor: pointer; }
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.brand { display: flex; flex-direction: column; min-width: 0; flex: 1; background: var(--paper); isolation: isolate; }
 .brand h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 20px; letter-spacing: .04em; line-height: 1.2; }
 .brand small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .brand small b { color: var(--ink); }
@@ -89,7 +90,11 @@ button { cursor: pointer; }
 /* 印：キャラクター画像。まだの店は白黒、行った店はカラー。
    .pin-anchor の下端中央が店の位置になる（Leaflet・Google 共通） */
 .pin-wrap { background: none; border: none; }
+/* タップは見えている丸だけで受ける（透明な余白が隣の印のタップを横取りしないように） */
+.pin-wrap.leaflet-interactive, .pin-anchor { pointer-events: none; }
+.pin { pointer-events: auto; cursor: pointer; }
 .pin-anchor { position: relative; width: 44px; height: 52px; }
+.map-far .pin-anchor { width: 24px; height: 24px; }
 .pin {
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
   width: 40px; height: 40px; border-radius: 50%;
@@ -111,7 +116,7 @@ button { cursor: pointer; }
 }
 .pin.is-selected { outline: 3px solid var(--naruto); outline-offset: 2px; }
 /* 引いて見ているときは小さな丸にして重なりを減らす */
-.map-far .pin { width: 20px; height: 20px; bottom: -10px; border-width: 1.5px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.map-far .pin { width: 22px; height: 22px; bottom: 1px; border-width: 1.5px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .map-far .pin::after, .map-far .pin-rate { display: none; }
 @media (prefers-reduced-motion: reduce) { .pin { transition: none; } }
 .me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(47,124,246,.25); }
@@ -641,7 +646,9 @@ function googleAdapter(key) {
     },
     upsert(shop, selected, onTap) {
       const content = pinEl(shop, selected);
-      if (markers[shop.id]) { markers[shop.id].content = content; markers[shop.id].zIndex = selected ? 1000 : 0; return; }
+      // 丸そのものにも直接タップを付ける（iPhone で gmp-click が届かないことがあるため。二重発火は openDetail 側で間引く）
+      content.querySelector(".pin").addEventListener("click", e => { e.stopPropagation(); onTap(shop.id); });
+      if (markers[shop.id]) { markers[shop.id].content = content; markers[shop.id].zIndex = selected ? 1000 : null; return; }
       const m = new AdvancedMarker({ map, position: { lat: shop.lat, lng: shop.lng }, content, title: shop.name, gmpClickable: true });
       m.addEventListener("gmp-click", () => onTap(shop.id));
       markers[shop.id] = m;
@@ -687,8 +694,13 @@ function closeSheets() {
   if (prev && shopById(prev)) drawMarker(shopById(prev));
 }
 
+let lastPinTap = { id: null, at: 0 };
 function openDetail(id) {
   if (addMode) return;
+  // 1回のタップで click と gmp-click の両方が来ても1回だけ開く
+  const now = Date.now();
+  if (lastPinTap.id === id && now - lastPinTap.at < 500) return;
+  lastPinTap = { id, at: now };
   const prev = selectedId; selectedId = id;
   if (prev && prev !== id && shopById(prev)) drawMarker(shopById(prev));
   const shop = shopById(id); drawMarker(shop);
@@ -860,7 +872,12 @@ function setAddMode(on) {
 $("#btn-add").addEventListener("click", () => setAddMode(!addMode));
 $("#btn-add-cancel").addEventListener("click", () => setAddMode(false));
 function onMapClick(lat, lng) {
-  if (!addMode) { if (!$("#detail").classList.contains("is-hidden")) closeSheets(); return; }
+  if (!addMode) {
+    // 印のタップが地図のタップとしても届いた場合に、開いたばかりのカードを閉じない
+    if (Date.now() - lastPinTap.at < 500) return;
+    if (!$("#detail").classList.contains("is-hidden")) closeSheets();
+    return;
+  }
   if (!insideCity(lat, lng)) { toast("西宮市の外です。市内の場所をタップしてください"); return; }
   pendingAdd = { lat, lng };
   setAddMode(false);
