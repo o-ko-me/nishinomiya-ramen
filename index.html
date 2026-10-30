@@ -762,12 +762,7 @@ function renderDetail() {
     </div>
     <details class="more">
       <summary>その他</summary>
-      <form class="form" id="tb-form">
-        <input class="field" type="url" inputmode="url" id="tb-url" value="${esc(r.tabelog || "")}" placeholder="食べログのURLを貼り付け">
-        <p class="hint">リンク先が違うときは、正しいお店のページのURLを入れてください。</p>
-        <button class="btn ghost" type="submit">食べログのリンクを保存</button>
-      </form>
-      <div class="form" style="margin-top:14px">
+      <div class="form">
         ${isCustom
           ? '<button class="btn danger" type="button" id="shop-delete">この店を削除する</button>'
           : '<button class="btn danger" type="button" id="shop-hide">この店を地図から隠す（閉店など）</button>'}
@@ -813,11 +808,6 @@ $("#detail-body").addEventListener("submit", e => {
       r.visited = true;
     });
     toast("メニューを記録しました");
-  } else if (e.target.id === "tb-form") {
-    const url = $("#tb-url").value.trim();
-    if (url && !/^https:\/\/(s\.)?tabelog\.com\//.test(url)) { toast("食べログ（tabelog.com）のURLを入れてください"); return; }
-    editRec(id, r => { if (url) r.tabelog = url; else delete r.tabelog; });
-    toast(url ? "リンクを保存しました" : "元のリンクに戻しました");
   }
   renderDetail(); drawMarker(shop); refreshStats();
 });
