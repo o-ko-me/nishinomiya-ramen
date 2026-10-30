@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="らーめん帖">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,8 +63,8 @@ button { cursor: pointer; }
   display: flex; align-items: center; gap: 10px;
   padding-top: calc(env(safe-area-inset-top, 0px) + 8px); padding-bottom: 8px;
   padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  /* iPhone では backdrop-filter が文字までぼかすことがあるため、不透明の帯にする */
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -86,25 +86,34 @@ button { cursor: pointer; }
 .leaflet-control-attribution { font-size: 10px; }
 .leaflet-bottom { bottom: env(safe-area-inset-bottom, 0px); }
 
+/* 印：キャラクター画像。まだの店は白黒、行った店はカラー。
+   .pin-anchor の下端中央が店の位置になる（Leaflet・Google 共通） */
 .pin-wrap { background: none; border: none; }
+.pin-anchor { position: relative; width: 44px; height: 52px; }
 .pin {
-  position: relative; width: 32px; height: 32px; border-radius: 50%;
-  display: grid; place-items: center;
-  background: var(--surface); color: var(--ink); border: 2.5px solid var(--ink);
-  font-weight: 700; font-size: 14px; line-height: 1; box-shadow: 0 2px 6px rgba(0,0,0,.25);
-  transform: translateZ(0);
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #fff url("chara.png") center / cover no-repeat;
+  border: 2px solid #3a3f4b; box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  filter: grayscale(1) contrast(1.05);
+  transition: width .15s, height .15s, bottom .15s;
 }
 .pin::after {
   content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
-  border: 6px solid transparent; border-top: 7px solid var(--ink); border-bottom: 0;
+  border: 5px solid transparent; border-top: 7px solid #3a3f4b; border-bottom: 0;
 }
-.pin.is-visited { background: var(--yolk); color: var(--yolk-ink); }
+.pin.is-visited { filter: none; border: 3px solid var(--yolk); }
+.pin.is-visited::after { border-top-color: var(--yolk); }
 .pin-rate {
-  position: absolute; top: -8px; right: -10px; min-width: 18px; height: 18px; padding: 0 4px;
-  border-radius: 9px; background: var(--naruto); color: #fff; font-size: 11px;
+  position: absolute; top: -7px; right: -9px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--naruto); color: #fff; font-size: 11px; font-weight: 700;
   display: grid; place-items: center; font-variant-numeric: tabular-nums;
 }
 .pin.is-selected { outline: 3px solid var(--naruto); outline-offset: 2px; }
+/* 引いて見ているときは小さな丸にして重なりを減らす */
+.map-far .pin { width: 20px; height: 20px; bottom: -10px; border-width: 1.5px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.map-far .pin::after, .map-far .pin-rate { display: none; }
+@media (prefers-reduced-motion: reduce) { .pin { transition: none; } }
 .me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(47,124,246,.25); }
 
 /* ---------- floating buttons ---------- */
@@ -127,8 +136,8 @@ button { cursor: pointer; }
   background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 12px;
 }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.legend i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: var(--surface); }
-.legend i.v { background: var(--yolk); }
+.legend i { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #3a3f4b; background: #fff url("chara.png") center / cover no-repeat; filter: grayscale(1); }
+.legend i.v { filter: none; border-color: var(--yolk); }
 
 .banner {
   position: fixed; z-index: 1100; left: 50%; transform: translateX(-50%);
@@ -357,7 +366,7 @@ dialog::backdrop { background: rgba(10, 12, 18, .45); }
     </section>
     <section>
       <h3>店のデータについて</h3>
-      <p class="hint">最初から載っている店は OpenStreetMap（© OpenStreetMap contributors）の 2026年10月時点のデータです。閉店した店は店カードの「その他」から非表示にできます。</p>
+      <p class="hint">最初から載っている店は、食べログの「西宮 ラーメン・つけ麺」に掲載されている店（2026年10月時点）です。閉店した店は店カードの「その他」から非表示にできます。載っていない店は右下の「＋」で追加できます。</p>
       <button class="btn ghost" type="button" id="unhide-all">非表示にした店をすべて戻す</button>
     </section>
     <div class="btns"><button class="btn" type="button" id="settings-close">閉じる</button></div>
@@ -375,38 +384,99 @@ const CITY = [[34.8267,135.2298],[34.8210,135.2306],[34.8190,135.2328],[34.8125,
 const CITY_BOUNDS = { south: 34.655, west: 135.215, north: 34.872, east: 135.40 };
 const CITY_CENTER = [34.742, 135.350];
 
-/* ===== 最初から載っている店（OpenStreetMap より） tb: 食べログの店舗ページ ===== */
+/* ===== 最初から載っている店（食べログ 西宮のラーメン・つけ麺 2026年10月時点） tb: 食べログの店舗ページ
+   id が s で始まる店は旧データからの引き継ぎ（記録が消えないよう id を変えない） ===== */
 const SEED = [
-  { id: "s01", name: "拉麺 水輝", lat: 34.7483653, lng: 135.3575428, tb: "https://tabelog.com/hyogo/A2803/A280301/28045186/" },
-  { id: "s02", name: "ラーメン荘 これが好きだから", lat: 34.7370665, lng: 135.3515679, tb: "https://tabelog.com/hyogo/A2803/A280301/28032069/" },
-  { id: "s03", name: "麺屋 桜息吹 西宮本店", lat: 34.7466412, lng: 135.3422403, tb: "https://tabelog.com/hyogo/A2803/A280301/28041780/" },
-  { id: "s04", name: "ラーメン にく次郎 西宮店", lat: 34.7316017, lng: 135.3389607 },
-  { id: "s05", name: "がんこらーめん", lat: 34.7446130, lng: 135.3578969, tb: "https://tabelog.com/hyogo/A2803/A280301/28021439/" },
-  { id: "s06", name: "ほうれんそう", lat: 34.8387513, lng: 135.2387136, tb: "https://tabelog.com/hyogo/A2803/A280301/28001161/" },
-  { id: "s07", name: "らーめん夢屋台 西宮店", lat: 34.7419586, lng: 135.3389737, tb: "https://tabelog.com/hyogo/A2803/A280301/28005279/" },
-  { id: "s08", name: "らー麺専門店 どん", lat: 34.7393274, lng: 135.3395995, tb: "https://tabelog.com/hyogo/A2803/A280301/28006715/" },
-  { id: "s09", name: "らーめん 徹信", lat: 34.7414121, lng: 135.3390414 },
-  { id: "s10", name: "らーめん R&R", lat: 34.7424294, lng: 135.3392572 },
-  { id: "s11", name: "満麺の笑み", lat: 34.7348496, lng: 135.3432869, tb: "https://tabelog.com/hyogo/A2803/A280301/28047523/" },
-  { id: "s12", name: "ラーメンの郷 あまのじゃく", lat: 34.7380680, lng: 135.3486408, tb: "https://tabelog.com/hyogo/A2803/A280301/28008049/" },
-  { id: "s13", name: "光明軒", lat: 34.7404063, lng: 135.3478657, tb: "https://tabelog.com/hyogo/A2803/A280301/28003372/" },
-  { id: "s14", name: "まこと屋 武庫川店", lat: 34.7305982, lng: 135.3758542, tb: "https://tabelog.com/hyogo/A2803/A280301/28032111/" },
-  { id: "s15", name: "天下一品 ららぽーと甲子園店", lat: 34.7174622, lng: 135.3632362, tb: "https://tabelog.com/hyogo/A2803/A280301/28033338/" },
-  { id: "s16", name: "オカモト醤油ヌードル", lat: 34.7581180, lng: 135.3632424, tb: "https://tabelog.com/hyogo/A2803/A280301/28053819/" },
-  { id: "s17", name: "北海ラーメン すすき野 アクタ西宮店", lat: 34.7477499, lng: 135.3573125, tb: "https://tabelog.com/hyogo/A2803/A280301/28021020/" },
-  { id: "s18", name: "ラーメン うめ乃", lat: 34.7385310, lng: 135.3756554 },
-  { id: "s19", name: "丸高中華そば 西宮店", lat: 34.7413712, lng: 135.3394703, tb: "https://tabelog.com/hyogo/A2803/A280301/28057442/" },
-  { id: "s20", name: "ラーメン魁力屋 西宮店", lat: 34.7417357, lng: 135.3441663, tb: "https://tabelog.com/hyogo/A2803/A280301/28025806/" },
-  { id: "s21", name: "ラーメン タイロン", lat: 34.7493588, lng: 135.3490130 },
-  { id: "s22", name: "にしのみやラーメン本家", lat: 34.7334743, lng: 135.3735977, tb: "https://tabelog.com/hyogo/A2803/A280301/28003346/" },
-  { id: "s23", name: "なごみらーめん", lat: 34.7365326, lng: 135.3733749, tb: "https://tabelog.com/hyogo/A2803/A280301/28023880/" },
-  { id: "s24", name: "宮っ子ラーメン", lat: 34.7422031, lng: 135.3425117 },
-  { id: "s25", name: "座右の麺", lat: 34.7232180, lng: 135.3717730, tb: "https://tabelog.com/hyogo/A2803/A280301/28059599/" },
-  { id: "s26", name: "麺や 白ぼし", lat: 34.7383653, lng: 135.3755447, tb: "https://tabelog.com/hyogo/A2803/A280301/28054073/" },
-  { id: "s27", name: "らぁ麺 酒場 さつき", lat: 34.7467305, lng: 135.3555616, tb: "https://tabelog.com/hyogo/A2803/A280301/28060485/" },
-  { id: "s28", name: "麺処 彩", lat: 34.7482580, lng: 135.3562047, tb: "https://tabelog.com/hyogo/A2803/A280301/28069781/" },
-  { id: "s29", name: "宮っこラーメン", lat: 34.7670068, lng: 135.3632548 },
-  { id: "s30", name: "ラーメン 来来亭", lat: 34.7469702, lng: 135.3436734 },
+  { id: "s01", name: "水輝", lat: 34.748374, lng: 135.357559, tb: "https://tabelog.com/hyogo/A2803/A280301/28045186/" },
+  { id: "s02", name: "ラーメン荘 これが好きだから", lat: 34.737077, lng: 135.351583, tb: "https://tabelog.com/hyogo/A2803/A280301/28032069/" },
+  { id: "s03", name: "麺屋 桜息吹 西宮本店", lat: 34.746718, lng: 135.342258, tb: "https://tabelog.com/hyogo/A2803/A280301/28041780/" },
+  { id: "s05", name: "がんこらーめん", lat: 34.744618, lng: 135.357915, tb: "https://tabelog.com/hyogo/A2803/A280301/28021439/" },
+  { id: "s06", name: "ほうれんそう", lat: 34.838737, lng: 135.238714, tb: "https://tabelog.com/hyogo/A2803/A280301/28001161/" },
+  { id: "s07", name: "らーめん夢屋台 西宮店", lat: 34.741966, lng: 135.338952, tb: "https://tabelog.com/hyogo/A2803/A280301/28005279/" },
+  { id: "s08", name: "どん", lat: 34.739307, lng: 135.339581, tb: "https://tabelog.com/hyogo/A2803/A280301/28006715/" },
+  { id: "s11", name: "満麺の笑み", lat: 34.734917, lng: 135.343264, tb: "https://tabelog.com/hyogo/A2803/A280301/28047523/" },
+  { id: "s12", name: "あまのじゃく", lat: 34.737886, lng: 135.348061, tb: "https://tabelog.com/hyogo/A2803/A280301/28008049/" },
+  { id: "s13", name: "光明軒", lat: 34.740402, lng: 135.347925, tb: "https://tabelog.com/hyogo/A2803/A280301/28003372/" },
+  { id: "s14", name: "まこと屋 武庫川店", lat: 34.730602, lng: 135.375890, tb: "https://tabelog.com/hyogo/A2803/A280301/28032111/" },
+  { id: "s15", name: "天下一品 ららぽーと甲子園店", lat: 34.717452, lng: 135.363208, tb: "https://tabelog.com/hyogo/A2803/A280301/28033338/" },
+  { id: "s16", name: "オカモト醤油ヌードル", lat: 34.758117, lng: 135.363190, tb: "https://tabelog.com/hyogo/A2803/A280301/28053819/" },
+  { id: "s17", name: "北海ラーメンすすき野 アクタ西宮店", lat: 34.747836, lng: 135.357311, tb: "https://tabelog.com/hyogo/A2803/A280301/28021020/" },
+  { id: "s20", name: "ラーメン魁力屋 西宮店", lat: 34.741727, lng: 135.344166, tb: "https://tabelog.com/hyogo/A2803/A280301/28025806/" },
+  { id: "s23", name: "なごみらーめん", lat: 34.736575, lng: 135.373350, tb: "https://tabelog.com/hyogo/A2803/A280301/28023880/" },
+  { id: "s24", name: "宮っ子ラーメン 西宮中前田店", lat: 34.742104, lng: 135.342556, tb: "https://tabelog.com/hyogo/A2803/A280301/28055941/" },
+  { id: "s25", name: "座右の麺", lat: 34.723238, lng: 135.371800, tb: "https://tabelog.com/hyogo/A2803/A280301/28059599/" },
+  { id: "s26", name: "麺や白ぼし", lat: 34.738379, lng: 135.375515, tb: "https://tabelog.com/hyogo/A2803/A280301/28054073/" },
+  { id: "s27", name: "らぁ麺 酒場 さつき", lat: 34.746711, lng: 135.355581, tb: "https://tabelog.com/hyogo/A2803/A280301/28060485/" },
+  { id: "s28", name: "麺処 彩", lat: 34.748265, lng: 135.356224, tb: "https://tabelog.com/hyogo/A2803/A280301/28069781/" },
+  { id: "s29", name: "宮っ子ラーメン 本店", lat: 34.767023, lng: 135.363268, tb: "https://tabelog.com/hyogo/A2803/A280301/28000792/" },
+  { id: "s30", name: "来来亭 西宮広田店", lat: 34.746997, lng: 135.343651, tb: "https://tabelog.com/hyogo/A2803/A280301/28004697/" },
+  { id: "t28013337", name: "甲子園飯店", lat: 34.736721, lng: 135.372616, tb: "https://tabelog.com/hyogo/A2803/A280301/28013337/" },
+  { id: "t28035467", name: "陳餐閣", lat: 34.734546, lng: 135.340425, tb: "https://tabelog.com/hyogo/A2803/A280301/28035467/" },
+  { id: "t28006625", name: "鳥半 本店", lat: 34.746765, lng: 135.355650, tb: "https://tabelog.com/hyogo/A2803/A280301/28006625/" },
+  { id: "t28072543", name: "点心の気持ち 甲子園", lat: 34.719811, lng: 135.362096, tb: "https://tabelog.com/hyogo/A2803/A280301/28072543/" },
+  { id: "t28034894", name: "チャイナバル BIGUP！", lat: 34.729895, lng: 135.366585, tb: "https://tabelog.com/hyogo/A2803/A280301/28034894/" },
+  { id: "t28061996", name: "鶏白湯soba KIZUNA 西宮北口店", lat: 34.745874, lng: 135.358151, tb: "https://tabelog.com/hyogo/A2803/A280301/28061996/" },
+  { id: "t28039192", name: "日の出商店", lat: 34.722301, lng: 135.356057, tb: "https://tabelog.com/hyogo/A2803/A280301/28039192/" },
+  { id: "t28072901", name: "三豊麺 ACTA西宮店", lat: 34.747568, lng: 135.357273, tb: "https://tabelog.com/hyogo/A2803/A280301/28072901/" },
+  { id: "t28068367", name: "どうとんぼり神座 ららぽーと甲子園店", lat: 34.717257, lng: 135.364240, tb: "https://tabelog.com/hyogo/A2803/A280301/28068367/" },
+  { id: "t28020937", name: "夢楽童子つるちゃん", lat: 34.736098, lng: 135.332093, tb: "https://tabelog.com/hyogo/A2803/A280301/28020937/" },
+  { id: "t28020607", name: "大阪王将 阪神今津駅前店", lat: 34.730809, lng: 135.351352, tb: "https://tabelog.com/hyogo/A2803/A280301/28020607/" },
+  { id: "t28055107", name: "虎と龍 ドンキホーテ西宮店", lat: 34.738444, lng: 135.343192, tb: "https://tabelog.com/hyogo/A2803/A280301/28055107/" },
+  { id: "t28075978", name: "豚骨ラーメン弐路", lat: 34.737670, lng: 135.375395, tb: "https://tabelog.com/hyogo/A2803/A280301/28075978/" },
+  { id: "t28074242", name: "ラーメン・つけめん 刻々", lat: 34.737722, lng: 135.345998, tb: "https://tabelog.com/hyogo/A2803/A280301/28074242/" },
+  { id: "t28053796", name: "麺屋 なる戸", lat: 34.766055, lng: 135.359451, tb: "https://tabelog.com/hyogo/A2803/A280301/28053796/" },
+  { id: "t28057779", name: "ラーメン 爆神", lat: 34.722819, lng: 135.371893, tb: "https://tabelog.com/hyogo/A2803/A280301/28057779/" },
+  { id: "t28073707", name: "らぁ麺 すぎ本 阪急西宮ガーデンズ店", lat: 34.744447, lng: 135.361129, tb: "https://tabelog.com/hyogo/A2803/A280301/28073707/" },
+  { id: "t28045397", name: "中華そば 牡丹 西宮店", lat: 34.740726, lng: 135.342797, tb: "https://tabelog.com/hyogo/A2803/A280301/28045397/" },
+  { id: "t28043116", name: "だしと麺", lat: 34.828730, lng: 135.245410, tb: "https://tabelog.com/hyogo/A2803/A280301/28043116/" },
+  { id: "t28062944", name: "中央軒 甲子園プラス店", lat: 34.720001, lng: 135.362138, tb: "https://tabelog.com/hyogo/A2803/A280301/28062944/" },
+  { id: "t28077060", name: "麺匠 四五六", lat: 34.734843, lng: 135.340010, tb: "https://tabelog.com/hyogo/A2803/A280301/28077060/" },
+  { id: "t28006816", name: "中華料理 桃園", lat: 34.732095, lng: 135.351264, tb: "https://tabelog.com/hyogo/A2803/A280301/28006816/" },
+  { id: "t28010460", name: "大貫", lat: 34.739350, lng: 135.374710, tb: "https://tabelog.com/hyogo/A2803/A280301/28010460/" },
+  { id: "t28074243", name: "拉麺 明日は我がme", lat: 34.721450, lng: 135.375509, tb: "https://tabelog.com/hyogo/A2803/A280301/28074243/" },
+  { id: "t28045109", name: "台湾まぜそば やす田", lat: 34.738315, lng: 135.343982, tb: "https://tabelog.com/hyogo/A2803/A280301/28045109/" },
+  { id: "t28066981", name: "DURA麺TE 西宮店", lat: 34.737658, lng: 135.346469, tb: "https://tabelog.com/hyogo/A2803/A280301/28066981/" },
+  { id: "t28013029", name: "万里", lat: 34.720213, lng: 135.362957, tb: "https://tabelog.com/hyogo/A2803/A280301/28013029/" },
+  { id: "t28061186", name: "中華蕎麦はれのち晴", lat: 34.739320, lng: 135.320160, tb: "https://tabelog.com/hyogo/A2803/A280301/28061186/" },
+  { id: "t28039865", name: "もっこす 西宮店", lat: 34.738440, lng: 135.334881, tb: "https://tabelog.com/hyogo/A2803/A280301/28039865/" },
+  { id: "t28050785", name: "三代目 麺家 あくた川", lat: 34.766743, lng: 135.358857, tb: "https://tabelog.com/hyogo/A2803/A280301/28050785/" },
+  { id: "t28072563", name: "らぁ麺モンド", lat: 34.756704, lng: 135.357765, tb: "https://tabelog.com/hyogo/A2803/A280301/28072563/" },
+  { id: "t28046136", name: "麺屋いっちょう", lat: 34.766887, lng: 135.363090, tb: "https://tabelog.com/hyogo/A2803/A280301/28046136/" },
+  { id: "t28065014", name: "煮干しらーめん 玉五郎 エビスタ西宮店", lat: 34.736838, lng: 135.338120, tb: "https://tabelog.com/hyogo/A2803/A280301/28065014/" },
+  { id: "t28008950", name: "餃子の王将 西宮北口店", lat: 34.747122, lng: 135.356457, tb: "https://tabelog.com/hyogo/A2803/A280301/28008950/" },
+  { id: "t28024034", name: "八角楼", lat: 34.735462, lng: 135.352210, tb: "https://tabelog.com/hyogo/A2803/A280301/28024034/" },
+  { id: "t28075863", name: "らぁ麺しん 西宮本店", lat: 34.737204, lng: 135.340145, tb: "https://tabelog.com/hyogo/A2803/A280301/28075863/" },
+  { id: "t28005181", name: "中国料理 百楽", lat: 34.720755, lng: 135.358996, tb: "https://tabelog.com/hyogo/A2803/A280301/28005181/" },
+  { id: "t28060609", name: "NOODLE HOUSE らみょん", lat: 34.740196, lng: 135.340665, tb: "https://tabelog.com/hyogo/A2803/A280301/28060609/" },
+  { id: "t28003345", name: "らあ麺と餃子のお店 たか和", lat: 34.765011, lng: 135.345772, tb: "https://tabelog.com/hyogo/A2803/A280301/28003345/" },
+  { id: "t28063250", name: "ごろちゃん餃子", lat: 34.705820, lng: 135.370543, tb: "https://tabelog.com/hyogo/A2803/A280301/28063250/" },
+  { id: "t28009522", name: "バーミヤン 西宮北口", lat: 34.742142, lng: 135.354621, tb: "https://tabelog.com/hyogo/A2803/A280301/28009522/" },
+  { id: "t28067444", name: "一麺万杯 當", lat: 34.737347, lng: 135.346855, tb: "https://tabelog.com/hyogo/A2803/A280301/28067444/" },
+  { id: "t28068560", name: "弟子屈ラーメン ららぽーと甲子園店", lat: 34.717451, lng: 135.363305, tb: "https://tabelog.com/hyogo/A2803/A280301/28068560/" },
+  { id: "t28003370", name: "らぁめん力丸", lat: 34.733669, lng: 135.365650, tb: "https://tabelog.com/hyogo/A2803/A280301/28003370/" },
+  { id: "t28045809", name: "どうとんぼり神座 阪急西宮ガーデンズ店", lat: 34.744093, lng: 135.360474, tb: "https://tabelog.com/hyogo/A2803/A280301/28045809/" },
+  { id: "t28076636", name: "らーめん工房 いちにぃさん", lat: 34.741363, lng: 135.339464, tb: "https://tabelog.com/hyogo/A2803/A280301/28076636/" },
+  { id: "t28039112", name: "美與志堂", lat: 34.832151, lng: 135.241913, tb: "https://tabelog.com/hyogo/A2803/A280301/28039112/" },
+  { id: "t28073248", name: "らぁめんどろっぷ", lat: 34.743166, lng: 135.337821, tb: "https://tabelog.com/hyogo/A2803/A280301/28073248/" },
+  { id: "t28003438", name: "中華 ひるね", lat: 34.734059, lng: 135.336120, tb: "https://tabelog.com/hyogo/A2803/A280301/28003438/" },
+  { id: "t28055707", name: "もっこす 今津店", lat: 34.731892, lng: 135.351809, tb: "https://tabelog.com/hyogo/A2803/A280301/28055707/" },
+  { id: "t28004327", name: "ラーメンたろう 苦楽園店", lat: 34.749948, lng: 135.327942, tb: "https://tabelog.com/hyogo/A2803/A280301/28004327/" },
+  { id: "t28076287", name: "麺屋 野条", lat: 34.758282, lng: 135.357842, tb: "https://tabelog.com/hyogo/A2803/A280301/28076287/" },
+  { id: "t28025458", name: "博多一風堂 西宮北口店", lat: 34.752146, lng: 135.353562, tb: "https://tabelog.com/hyogo/A2803/A280301/28025458/" },
+  { id: "t28064851", name: "DURA麺TE", lat: 34.712842, lng: 135.372523, tb: "https://tabelog.com/hyogo/A2803/A280301/28064851/" },
+  { id: "t28075851", name: "人類みなボヨヨンラーメン", lat: 34.827810, lng: 135.294594, tb: "https://tabelog.com/hyogo/A2803/A280301/28075851/" },
+  { id: "t28076129", name: "らぁめん醤油時々塩", lat: 34.731447, lng: 135.350583, tb: "https://tabelog.com/hyogo/A2803/A280301/28076129/" },
+  { id: "t28054114", name: "ラー麺 ずんどう屋 西宮大島町店", lat: 34.761823, lng: 135.366514, tb: "https://tabelog.com/hyogo/A2803/A280301/28054114/" },
+  { id: "t28039642", name: "しぇからしか 西宮北店", lat: 34.839261, lng: 135.238561, tb: "https://tabelog.com/hyogo/A2803/A280301/28039642/" },
+  { id: "t28031055", name: "中華菜館 チャオ", lat: 34.752114, lng: 135.367264, tb: "https://tabelog.com/hyogo/A2803/A280301/28031055/" },
+  { id: "t28073572", name: "らーめんKING", lat: 34.720135, lng: 135.362920, tb: "https://tabelog.com/hyogo/A2803/A280301/28073572/" },
+  { id: "t28009051", name: "幸醤樓", lat: 34.718715, lng: 135.368605, tb: "https://tabelog.com/hyogo/A2803/A280301/28009051/" },
+  { id: "t28074515", name: "舎鈴 阪急西宮ガーデンズ店", lat: 34.744566, lng: 135.361205, tb: "https://tabelog.com/hyogo/A2803/A280301/28074515/" },
+  { id: "t28068141", name: "つけ麺 しんば", lat: 34.766794, lng: 135.358270, tb: "https://tabelog.com/hyogo/A2803/A280301/28068141/" },
+  { id: "t28007494", name: "餃子の王将 鳴尾店", lat: 34.722152, lng: 135.373572, tb: "https://tabelog.com/hyogo/A2803/A280301/28007494/" },
+  { id: "t28070256", name: "らぁ麺 たか和 3号店", lat: 34.768616, lng: 135.346509, tb: "https://tabelog.com/hyogo/A2803/A280301/28070256/" },
+  { id: "t28077782", name: "油そば・まぜそば ロマン  関学前店", lat: 34.768601, lng: 135.349570, tb: "https://tabelog.com/hyogo/A2803/A280301/28077782/" },
+  { id: "t28075540", name: "鶏そば 龍", lat: 34.757501, lng: 135.357664, tb: "https://tabelog.com/hyogo/A2803/A280301/28075540/" },
 ];
 
 /* ===== 保存 ===== */
@@ -480,13 +550,13 @@ const starsText = n => "★".repeat(n) + "☆".repeat(5 - n);
 
 function pinEl(shop, selected) {
   const r = getRec(shop.id);
-  const d = document.createElement("div");
-  d.className = "pin" + (r.visited ? " is-visited" : "") + (selected ? " is-selected" : "");
-  d.innerHTML = r.visited
-    ? `<span>✓</span>${r.rating ? `<span class="pin-rate">${r.rating}</span>` : ""}`
-    : "<span>麺</span>";
-  return d;
+  const a = document.createElement("div");
+  a.className = "pin-anchor";
+  a.innerHTML = `<div class="pin${r.visited ? " is-visited" : ""}${selected ? " is-selected" : ""}">${r.visited && r.rating ? `<span class="pin-rate">${r.rating}</span>` : ""}</div>`;
+  return a;
 }
+const FAR_ZOOM = 14;
+function setFar(el, zoom) { el.classList.toggle("map-far", zoom < FAR_ZOOM); }
 
 /* ===== 地図（Google マップ / 国土地理院 の切り替え） ===== */
 // 市外を薄く覆うマスク。外枠と市境界は回転方向を逆にして「穴」にする。
@@ -506,15 +576,17 @@ function leafletAdapter() {
         maxBoundsViscosity: .8,
       }).setView(CITY_CENTER, 13);
       L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
-        maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a> | 店舗 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+        maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a> | 市境界 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
       }).addTo(map);
       L.polygon([WORLD, HOLE], { stroke: false, fillColor: "#1f2433", fillOpacity: .28, interactive: false }).addTo(map);
       L.polyline(CITY.concat([CITY[0]]), { color: "#c8394f", weight: 2.5, opacity: .9, dashArray: "6 5", interactive: false }).addTo(map);
       map.on("click", e => onClick(e.latlng.lat, e.latlng.lng));
+      map.on("zoomend", () => setFar(el, map.getZoom()));
+      setFar(el, map.getZoom());
       return Promise.resolve();
     },
     upsert(shop, selected, onTap) {
-      const icon = L.divIcon({ html: pinEl(shop, selected).outerHTML, className: "pin-wrap", iconSize: [32, 40], iconAnchor: [16, 40] });
+      const icon = L.divIcon({ html: pinEl(shop, selected).outerHTML, className: "pin-wrap", iconSize: [44, 52], iconAnchor: [22, 52] });
       if (markers[shop.id]) { markers[shop.id].setIcon(icon); markers[shop.id].setZIndexOffset(selected ? 1000 : 0); return; }
       const m = L.marker([shop.lat, shop.lng], { icon, title: shop.name, keyboard: true }).addTo(map);
       m.on("click", () => onTap(shop.id));
@@ -555,6 +627,8 @@ function googleAdapter(key) {
             new google.maps.Polygon({ map, paths: [toLL(WORLD), toLL(HOLE)], strokeWeight: 0, fillColor: "#1f2433", fillOpacity: .28, clickable: false });
             new google.maps.Polyline({ map, path: toLL(CITY.concat([CITY[0]])), strokeColor: "#c8394f", strokeOpacity: .9, strokeWeight: 2.5, clickable: false });
             map.addListener("click", e => onClick(e.latLng.lat(), e.latLng.lng()));
+            map.addListener("zoom_changed", () => setFar(el, map.getZoom()));
+            setFar(el, map.getZoom());
             resolve();
           } catch (err) { reject(err); }
         };
@@ -567,7 +641,6 @@ function googleAdapter(key) {
     },
     upsert(shop, selected, onTap) {
       const content = pinEl(shop, selected);
-      content.style.transform = "translateY(-4px)";
       if (markers[shop.id]) { markers[shop.id].content = content; markers[shop.id].zIndex = selected ? 1000 : 0; return; }
       const m = new AdvancedMarker({ map, position: { lat: shop.lat, lng: shop.lng }, content, title: shop.name, gmpClickable: true });
       m.addEventListener("gmp-click", () => onTap(shop.id));
